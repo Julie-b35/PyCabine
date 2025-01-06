@@ -26,12 +26,15 @@ def actualise_locales():
             print("Sortie erreur", e.stderr)
 
 def main():
-    app = initialiser_projet()
-    app.RunScenario(SCENARIO)
-    
-
+    pass
 
 if __name__ == "__main__" :
+    print("Hello World")
+    exit()
+    #print(Utils.baseName.__doc__)
+    #print(L("HelloWorld"))
+    #exit()
+    #TODO Test de la classe Langue, le but est de renvoyer un texte
     try:
         actualise_locales()
         main()

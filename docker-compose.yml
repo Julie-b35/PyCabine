@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: ./ressources/docker/Dockerfile.test
+    volumes:
+      - .:/app
+    entrypoint: entrypoint

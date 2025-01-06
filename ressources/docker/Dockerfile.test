@@ -1,0 +1,13 @@
+FROM ghcr.io/julie-b35/python_lgpio:latest
+LABEL version="1.0" maintainer="Julie Brindejont <julie.brindejont@gmail.com>"
+
+# Copier les fichiers nécessaires.
+COPY ./ressources/docker/entrypoint.sh /usr/local/bin/entrypoint
+
+RUN chmod +x /usr/local/bin/entrypoint
+
+# Définir le répertoire de travail dans le conteneur
+WORKDIR /app
+
+# Définir l'entrée du conteneur
+ENTRYPOINT ["entrypoint"]
