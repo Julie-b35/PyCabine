@@ -175,6 +175,16 @@ class Utils:
     def copy_file(self, source, target):
         import shutil
         shutil.copy2(source, target)
+
+    def get_content_file(self, file):
+        with open(file, 'r') as handler_file:
+            content = handler_file.read()
+            
+        return content
+    
+    def write_file(self, target, content):
+        with open(target, 'w') as handler_file:
+            handler_file.write(content)
     def del_file(self, file):
 
         fichier_a_supprimer = file

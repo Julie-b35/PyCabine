@@ -32,10 +32,36 @@ class Service:
 
     def configure(self):
         self.__directory_ressources = self.__api.getTools_Utils().getWorkDir() + "/ressources/"
-        #self.__content_service_file = self.genere_service()
+        self.__content_service_file = self.genere_service()
+
 
     def genere_service(self):
-        pass
+        _utils = self.__api.getTools_Utils()
+        uid, group, username = self.get_user()
+        content =  _utils.get_content_file(self.__directory_ressources + self.__name_service).format(
+            USER = username,
+            GROUP = group,
+            UID = uid
+        )
+        return content
+
+    def get_user(self):
+        import os
+        import grp
+        import getpass
+        uid, group, username = "", "", ""
+        if os.geteuid() == 0:
+            # Je suis en mode root, donc jouer avec la variable d'environnement.
+            uid = int(os.getenv('SUDO_UID'))
+            username = os.getenv('SUDO_USER')
+            group = grp.getgrgid(int(os.getenv('SUDO_GID'))).gr_name
+        else:
+            uid = os.getuid()
+            username = getpass.getuser()
+            group = grp.getgrgid(os.getgid()).gr_name
+
+        return uid, group, username
+
     def set_options(self, options):
         if (options.install) : 
             self.__mode = INSTALL
@@ -57,9 +83,11 @@ class Service:
 
     def process_install(self):
         _utils = self.__api.getTools_Utils()
+        if not _utils.file_exists(DIRECTORY_SERVICE + self.__name_service) : 
+            _utils.write_file(DIRECTORY_SERVICE + self.__name_service, self.__content_service_file)
+            print(self.__content_service_file)
+
         if not self.check_service():
-            if not _utils.file_exists(DIRECTORY_SERVICE + self.__name_service) : 
-                _utils.copy_file(self.__directory_ressources + self.__name_service, DIRECTORY_SERVICE + self.__name_service)
             self.daemon_reload()
             self.exec([SYSTEMCTL, 'enable', self.__name_service])
             print("Le service {} à été installé avec succès.".format(self.__name_service))

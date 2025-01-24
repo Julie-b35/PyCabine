@@ -21,7 +21,6 @@ def actualise_locales():
             print("Erreur détectée :", e)
             print("Code de retour : ", e.returncode)
             print("Sortie erreur", e.stderr)
-    exit()
 
 def main():
     from Api import initialiser_projet

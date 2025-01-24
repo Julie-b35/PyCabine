@@ -15,7 +15,7 @@ RemainAfterExit=true
 #PrivateDevices=no
 #Environment="SDL_AUDIODRIVER=alsa"
 # Ensure proper PulseAudio access
-Environment="XDG_RUNTIME_DIR=/run/user/1000" 
+Environment="XDG_RUNTIME_DIR=/run/user/{UID}" 
 RuntimeDirectory=cabine
 RuntimeDirectoryMode=0755
 
