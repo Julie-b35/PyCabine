@@ -77,3 +77,6 @@ Pour installer les modules, lancer la commande `pip install -r requirements.txt`
 #### Attention
 
 Le module `sounddevice` nécessite l'installation du paquet `libportaudio2`
+```BASH
+sudo apt-get install libportaudio2
+```
