@@ -1,7 +1,7 @@
 [Unit]
 Description=Cabine system daemon
 After=sound.target pipewire.service pipewire-pulse.service
-Wants=sound.target pipewire.service pipewire-pulse.service
+Requires=sound.target pipewire.socket pipewire-pulse.socket
 
 [Service]
 Type=simple

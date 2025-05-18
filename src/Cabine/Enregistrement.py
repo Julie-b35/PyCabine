@@ -20,6 +20,9 @@ class Enregistrement():
         INTERNET = 1
         PRIVER = 2
     
+    class State(Enum):
+        READY = 1
+
     def __new__(self, _, *args, **kwargs):
         # Vérifie si une instance existe déjà
         # merci Chat GPT
@@ -31,15 +34,22 @@ class Enregistrement():
         if not hasattr(self, "_initialized"):
             self._initialized = True
             self.__api = api
+            self.__utils = None
             self.saveMp3File = None
             self.saveWaveFile = None
             self.saveWaveAmplifiedFile = None
+            self.callback = None
     def configure(self):
         self.directoryVocalMsg = self.__api.getTools_Utils().getWorkDir() + "/upload/"
 
     def pre_run(self) :
         self.__combi = self.__api.GetCls_Combiner()
+        self.__utils = self.__api.getTools_Utils()
 
+    def set_callback(self, callback):
+        if not callable(callback):
+            raise ValueError("La fonction de rappel doit être une fonction.")
+        self.callback = callback
     def setFile(self, choice_publication: ChoicePublication = ChoicePublication.INTERNET):
         import datetime
         curent_time = datetime.datetime.now()
@@ -57,44 +67,63 @@ class Enregistrement():
         self.saveWaveAmplifiedFile = "%s%s_%s-%s-%s_%s-%s-%s.ampli.wav" % tuple(tab_save_file)
         self.saveMp3File = "%s%s_%s-%s-%s_%s-%s-%s.mp3" % tuple(tab_save_file)
 
-    def saveVocalMsg(self):
-        print("saveVocalMsg : Enregistrement en cours.")
-        print (self.saveWaveFile)
+    def __createTmpFileSong(self):
+        print("Module Enregistrement : Création Fichier Son (%s)." % self.saveWaveFile)
         import wave
+        fileHandler = wave.open(self.saveWaveFile, 'wb')
+        fileHandler.setnchannels(1)
+        fileHandler.setsampwidth(2)
+        fileHandler.setframerate(self.TAUX_ECHANTILLONNAGE)
+
+        return fileHandler
+
+    def __writeSong(self, fh):
+        print("Module Enregistrement : Enregistrement en cours.")
         import sounddevice as sd
         from time import sleep
-        try:
-            with wave.open(self.saveWaveFile, 'wb') as fichier_wave:
-                fichier_wave.setnchannels(1)
-                fichier_wave.setsampwidth(2)
-                fichier_wave.setframerate(self.TAUX_ECHANTILLONNAGE)
-                # Démarrage de l'enregistrement en streaming
-                def callback(indata, frames, time, status):
-                    if status:
-                        print(f"Statut : {status}")
-                    #audio.append(indata.copy())
-                    fichier_wave.writeframes(indata.tobytes())
+        # Démarrage de l'enregistrement en streaming
+        def callback(indata, frames, time, status):
+            if status:
+                print(f"Statut : {status}")
+            #audio.append(indata.copy())
+            fh.writeframes(indata.tobytes())
+        with sd.InputStream(
+            samplerate=self.TAUX_ECHANTILLONNAGE,
+            channels=1,
+            dtype='int16',
+            callback=callback
+        ):
+            while True:
+                sleep(0.1) # en prévention surchage CPU.
                 #print(self.__combi)
-                with sd.InputStream(
-                    samplerate=self.TAUX_ECHANTILLONNAGE,
-                    channels=1,
-                    dtype='int16',
-                    callback=callback
-                ):
-                    while True:
-                        sleep(0.1) # en prévention surchage CPU.
-                        #print(self.__combi)
-                        if self.__combi.combiRaccrocher():
-                            break
-                    #while GPIO.input(HOOK_PIN) == GPIO.HIGH:
-                    #    time.sleep(0.1)
-            print(f"Enregistrement terminé. Fichier enregistré sous {self.saveWaveFile}")
-        except Exception as e:
-            print(f"Erreur pendant l'enregistrement : {e}")
-        finally:
-            print("saveVocalMsg : Fin de l'enregistrement.")
-            self.amplify_wav(5.0)
+                if self.callback():
+                    break
+            #while GPIO.input(HOOK_PIN) == GPIO.HIGH:
+            #    time.sleep(0.1)
+        
+    def __close(self, fh):
+        print("Module Enregistrement : Fermeture Fichier Son (%s)." % self.saveWaveFile)
+        fh.close()
 
+    def saveVocalMsg(self):
+        """
+        Point d'entré principale pour l'enregistrement du son
+        """
+        tmpFileSong = None
+        # 1. Création du fichier
+        try:
+            tmpFileSong = self.__createTmpFileSong()
+        except Exception as e:
+            print(f"Erreur pendant la création du fichier sonore temporaire qui contiendra l'enregistrement : ")
+            raise e
+        else:
+            self.__writeSong(tmpFileSong)
+            self.__close(tmpFileSong)
+        
+        # 2. Vérification de l'existance du son.
+        if not self.__utils.file_exists(self.saveWaveFile):
+            raise("La créeation du fichier son (%s) n'a pu être effectué." % self.saveWaveFile)
+        #self.amplify_wav(5.0)
 
 
     def amplify_wav(self, gain = 2.0):

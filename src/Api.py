@@ -71,7 +71,7 @@ class Api:
             components = module_name.split('.')
             domain = components[0].lower()
             module = __import__('.'.join(components[:-1]), fromlist=[components[-1]])
-            self.__allow_use_gettext(domain, module_name)
+            self.allow_use_gettext(domain, module_name)
             return getattr(module, components[-1])
         except (ImportError, AttributeError) as e:
             raise ImportError(self.__("Error importing module %s : %s") % (module_name, e))
@@ -101,7 +101,7 @@ class Api:
         domain = 'error'
         for name_cls_exception in EXCEPTIONS :
             name = 'Exceptions.' + name_cls_exception
-            self.__allow_use_gettext(domain, name)
+            self.allow_use_gettext(domain, name)
 
     def __check_initiated_tools(self):
         """
@@ -114,7 +114,7 @@ class Api:
             raise Exception(self.__("Tools have not been initialized."))
         return True
 
-    def __allow_use_gettext(self, domain_gettext, *names_caller_modules):
+    def allow_use_gettext(self, domain_gettext, *names_caller_modules):
         """
         Ajoute un ou plusieurs modules à la liste des modules autorisés pour un domaine gettext donné.
         
@@ -141,7 +141,7 @@ class Api:
             __name_caller_module = self.getTools_Utils().GetCallingModule()
         except:
             return message
-        
+        #print(__name_caller_module)
         for domain, list_names_modules in self.__list_allowed_modules_for_gettext.items():
             if __name_caller_module in list_names_modules : 
                 return self.__gettext._(domain,message)
@@ -179,6 +179,9 @@ class Api:
                 pre_run = getattr(_cls, 'pre_run')
                 if callable(pre_run):
                     pre_run() 
+
+    def GetListeAllowed(self):
+        return self.__list_allowed_modules_for_gettext
     # Accesseurs pour les modules principaux  
     def GetCls_Combiner(self):
         return self.__mods_projects['Combinee']
@@ -345,10 +348,12 @@ class Api:
         self.post_configure()
     
 # Factory pour l'initialisation du projet
+
 def initialiser_projet():
     """
     Initialise et configure l'API du projet.
 
+    Appeller depuis __main__.py
     Returns:
         Api: Instance configurée de la classe Api.
     """

@@ -63,7 +63,6 @@ class Touches :
 		self.__son = self.__api.GetCls_Son()
 
 	def pre_run(self):
-		print("Touches : Initialisation du clavier matriciel : pre_run")
 		# Initialisation du clavier matriciel
 		self.__pad.init_keypad(KEYPAD, ROW_PINS, COL_PINS)
 		self.__dtmf_sounds = {key: self.generate_dtmf(freqs) for key, freqs in DTMF_FREQS.items()}

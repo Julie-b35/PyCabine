@@ -5,27 +5,16 @@
 if __name__ == "__main__" : 
     raise Exception("Ce scripte n'est pas exécutable.")
 
-class Scenario2() :
-    # Attribut de classe pour stocker l'unique instance
-    _instance = None
+from Cabine.Scenarios.Scenario import Scenario as BaseScenario
+from time import sleep
+class Scenario2(BaseScenario) :
 
-    def __new__(self, _, *args, **kwargs):
-        # Vérifie si une instance existe déjà
-        # merci Chat GPT
-        if not self._instance:
-            self._instance = super(Scenario2, self).__new__(self, *args, **kwargs)
-            pass
-        return self._instance
-    
-    def __init__(self, api):
-         # A initialiser qu'une seule fois.
-         if not hasattr(self, "_initialized"):
-            self._initialized = True
-
-    def exec(self):
-        print("Scenario2 : Lancement scénario 2.")
+    def callback_end_save_voice(self):
+        touche = self._touches.getSelectedKey()
+        diese_pressed = False
+        if touche == "#":
+            diese_pressed = True
+        return self._combi.combiRaccrocher() or diese_pressed
 
 def init(api):
-    global _
-    _ = api._
     return Scenario2(api)

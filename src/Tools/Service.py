@@ -79,7 +79,16 @@ class Service:
             return True
 
     def check_service(self):
-        return self.exec([SYSTEMCTL, 'status', self.__name_service], raise_error = False)
+        ret = self.exec([SYSTEMCTL, 'status', self.__name_service], raise_error = True)
+        code =  ret.returncode
+
+        if self.__mode == 'process_uninstall' and code == 0:
+            self.exec([SYSTEMCTL, 'stop', self.__name_service])
+        
+        if code in (0, 1,2, 3):
+            return True
+        else:
+            return False
 
     def process_install(self):
         _utils = self.__api.getTools_Utils()
@@ -114,18 +123,15 @@ class Service:
         self.exec([SYSTEMCTL, 'daemon-reload']) 
 
     def exec(self, cmd, raise_error = True) :
+            if not raise_error:
+                process_error = self.__subprocess.DEVNULL
             try:
-                result = self.__subprocess.run(cmd, check=True, text=True, capture_output=True)
+                result = self.__subprocess.run(cmd, check=True, text=True, capture_output=True, )
+                return result
             except self.__subprocess.CalledProcessError as e:
                 if raise_error :
                     print(f"Erreur lors de l'exécution : {e.stderr}")
                     raise e
-                else :
-                    return False
-            if raise_error:
-                return result
-            else :
-                return True
 
     def process(self):
         if self.check_root():
