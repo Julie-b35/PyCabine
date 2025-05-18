@@ -5,8 +5,8 @@ Wants=sound.target pipewire.service pipewire-pulse.service
 
 [Service]
 Type=simple
-User={USER}
-Group={GROUP}
+User=rpi
+Group=rpi
 ExecStart=/usr/bin/cabine daemon start
 ExecStop=/usr/bin/cabine daemon stop
 Restart=on-failure

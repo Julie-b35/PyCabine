@@ -9,9 +9,23 @@ class Mixer :
     def __init__(self, api):
         self.__api = api
     
+    def __configureDevice(self):
+        import subprocess, os
+        # Set the audio output to USB
+
+        result = subprocess.run(['aplay', '-l'], capture_output=True, text=True)
+        for line in result.stdout.splitlines():
+            if 'USB Audio' in line:
+                device = line.split()[1]
+                return device
+                #break
+        return None
     def configure(self):
         global _
         _ = self.__api._
+        id_cart = self.__configureDevice()
+        self.__api.getTools_Utils().set_environment("AUDIODEV", f'plughw:{id_cart}')
+
 
     def post_configure(self):
         import pygame as _pygame
@@ -38,6 +52,7 @@ class Mixer :
         return self.__music.stop()
     
     def make_sound(self, wave):
+        #print(self.__pygame)
         return self.__pygame.sndarray.make_sound(wave)
     
     def clean(self):

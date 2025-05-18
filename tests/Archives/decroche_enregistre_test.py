@@ -11,7 +11,7 @@ DUREE_MAX_ENREGISTREMENT = 60  # Temps maximum d'enregistrement (en secondes)
 TAUX_ECHANTILLONNAGE = 44100
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(17,GPIO.IN)  # pin 17 réglée en input
+GPIO.setup(17,GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # pin 17 réglée en input
 
 def enregistrer_audio(fichier_sortie):
     print("Enregistrement en cours...")
@@ -30,11 +30,11 @@ def enregistrer_audio(fichier_sortie):
 
             with sd.InputStream(
                 samplerate=TAUX_ECHANTILLONNAGE,
-                channels=1,
+                channels=0,
                 dtype='int16',
                 callback=callback
             ):
-                while GPIO.input(HOOK_PIN) == GPIO.HIGH:
+                while GPIO.input(HOOK_PIN) == GPIO.DOWN:
                     time.sleep(0.1)
         print(f"Enregistrement terminé. Fichier enregistré sous {fichier_sortie}")
     except Exception as e:
@@ -43,7 +43,7 @@ def enregistrer_audio(fichier_sortie):
 try:
     print("Attente que le combiné soit décroché...")
     while True:
-        if GPIO.input(HOOK_PIN) == GPIO.HIGH:
+        if GPIO.input(HOOK_PIN) == GPIO.DOWN:
             print("Combiné décroché. Lancement de l'enregistrement.")
             enregistrer_audio("combiné.wav")
             print("Combiné raccroché. Enregistrement arrêté.")

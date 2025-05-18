@@ -21,9 +21,10 @@ def actualise_locales():
             print("Erreur détectée :", e)
             print("Code de retour : ", e.returncode)
             print("Sortie erreur", e.stderr)
-    exit()
+    #exit()
 
 def main():
+    print("Lancement de l'application...")
     from Api import initialiser_projet
     app = initialiser_projet()
     app.Run()

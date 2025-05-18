@@ -7,6 +7,7 @@ if __name__ == "__main__" :
 
 from enum import Enum
 
+import sounddevice as sd
 
 
 
@@ -15,18 +16,20 @@ class Enregistrement():
     # Attribut de classe pour stocker l'unique instance
     _instance = None
     
-    TAUX_ECHANTILLONNAGE = 44100
+    Int16 = 2
+    Int32 = 4
+    TAUX_ECHANTILLONNAGE = 48000
     class ChoicePublication(Enum):
         INTERNET = 1
         PRIVER = 2
     
-    def __new__(self, _, *args, **kwargs):
+    def __new__(cls, _, *args, **kwargs):
         # Vérifie si une instance existe déjà
         # merci Chat GPT
-        if not self._instance:
-            self._instance = super(Enregistrement, self).__new__(self, *args, **kwargs)
+        if not cls._instance:
+            cls._instance = super(Enregistrement, cls).__new__(cls, *args, **kwargs)
             pass
-        return self._instance
+        return cls._instance
     def __init__(self, api): # A initialiser qu'une seule fois.
         if not hasattr(self, "_initialized"):
             self._initialized = True
@@ -34,7 +37,21 @@ class Enregistrement():
             self.saveMp3File = None
             self.saveWaveFile = None
             self.saveWaveAmplifiedFile = None
+            self.device = None
+    def __getDevice(self, name, kind="input"):
+        devices = sd.query_devices()
+        for i, dev in enumerate(devices):
+            if name.lower() in dev['name'].lower():
+                if (kind == 'input' and dev['max_input_channels'] > 0) or \
+                (kind == 'output' and dev['max_output_channels'] > 0):
+                    return i
+        return None
+
     def configure(self):
+        self.device = self.__getDevice("snd_rpi", kind="input")
+        self.format_song = self.Int32
+        if self.device is None:
+            raise Exception("Aucun périphérique d'enregistrement trouvé.")
         self.directoryVocalMsg = self.__api.getTools_Utils().getWorkDir() + "/upload/"
 
     def pre_run(self) :
@@ -61,12 +78,11 @@ class Enregistrement():
         print("saveVocalMsg : Enregistrement en cours.")
         print (self.saveWaveFile)
         import wave
-        import sounddevice as sd
         from time import sleep
         try:
             with wave.open(self.saveWaveFile, 'wb') as fichier_wave:
                 fichier_wave.setnchannels(1)
-                fichier_wave.setsampwidth(2)
+                fichier_wave.setsampwidth(4)
                 fichier_wave.setframerate(self.TAUX_ECHANTILLONNAGE)
                 # Démarrage de l'enregistrement en streaming
                 def callback(indata, frames, time, status):
@@ -76,9 +92,10 @@ class Enregistrement():
                     fichier_wave.writeframes(indata.tobytes())
                 #print(self.__combi)
                 with sd.InputStream(
+                    device=self.device,
                     samplerate=self.TAUX_ECHANTILLONNAGE,
                     channels=1,
-                    dtype='int16',
+                    dtype='int32',
                     callback=callback
                 ):
                     while True:
@@ -93,11 +110,33 @@ class Enregistrement():
             print(f"Erreur pendant l'enregistrement : {e}")
         finally:
             print("saveVocalMsg : Fin de l'enregistrement.")
+            self.amplify_if_needed()
+            self.converteWaveToMp3()
+
+
+    def analyse_volume(self, file_path):
+        import wave
+        import numpy as np
+        with wave.open(file_path, 'rb') as wf:
+            sampwidth = wf.getsampwidth()
+            frames = wf.readframes(wf.getnframes())
+        dtype = {1: np.int8, 2: np.int16, 4: np.int32}[sampwidth]
+        audio_array = np.frombuffer(frames, dtype=dtype)
+        rms = np.sqrt(np.mean(audio_array.astype(np.float64)**2))
+        return rms
+
+    def amplify_if_needed(self):
+        rms = self.analyse_volume(self.saveWaveFile)
+        print(f"Volume RMS mesuré : {rms}")
+        if rms < 100000:  # seuil à ajuster selon tests
+            print("Volume trop bas, amplification x5...")
             self.amplify_wav(5.0)
-
-
-
+        else:
+            print("Volume correct, pas d'amplification.")
+            self.saveWaveAmplifiedFile = self.saveWaveFile  # copie logique
+            
     def amplify_wav(self, gain = 2.0):
+        raise NotImplementedError("La méthode amplify_wav n'est pas encore implémentée.")
         import wave
         import numpy as np
         input_file = self.saveWaveFile
@@ -113,9 +152,13 @@ class Enregistrement():
             
             # Lire les frames audio
             audio_frames = wav_in.readframes(num_frames)
-
+            if sample_width == 2:
+                dtype = np.int16
+            elif sample_width == 4:
+                dtype = np.int32
+            else:
+                raise ValueError(f"Format échantillon inconnu : {sample_width}")
             # Convertir les frames en données numériques
-            dtype = np.int16 if sample_width == 2 else np.int8
             audio_array = np.frombuffer(audio_frames, dtype=dtype)
 
             # Appliquer le gain pour amplifier le son
@@ -130,12 +173,14 @@ class Enregistrement():
             wav_out.setparams(params)
             wav_out.writeframes(amplified_audio.tobytes())
         print(f"Le fichier amplifié est enregistré sous : {output_file}")
-        self.converteWaveToMp3()
+        #self.converteWaveToMp3()
 
     def converteWaveToMp3(self):
         from pydub import AudioSegment
         try:
             audio = AudioSegment.from_wav(self.saveWaveAmplifiedFile)
+            audio = audio.set_sample_width(2)  # passe à 16-bit
+            print(audio.frame_rate, audio.channels, audio.sample_width)
             audio.export(self.saveMp3File, format='mp3')
         except Exception as e:
             print(f"Erreur pendant la conversion wav --> mp3 : {e}")
@@ -158,16 +203,17 @@ class Enregistrement():
         except Exception as e:
             print(f"Un erreur est survenue : {e}")
 
-        file_path = Path(self.saveWaveAmplifiedFile)
-        try:
-            file_path.unlink()
-            print(f"Le fichier {self.saveWaveAmplifiedFile} à bien été supprimé.")
-        except FileNotFoundError as e: 
-            print(f"{self.saveWaveAmplifiedFile} : n'existe pas. : {e}")
-        except PermissionError as e:
-            print(f"Permission refusée : {self.saveWaveAmplifiedFile} : {e}")
-        except Exception as e:
-            print(f"Un erreur est survenue : {e}")
+        if self.saveWaveAmplifiedFile != self.saveWaveFile:
+            file_path = Path(self.saveWaveAmplifiedFile)
+            try:
+                file_path.unlink()
+                print(f"Le fichier {self.saveWaveAmplifiedFile} à bien été supprimé.")
+            except FileNotFoundError as e: 
+                print(f"{self.saveWaveAmplifiedFile} : n'existe pas. : {e}")
+            except PermissionError as e:
+                print(f"Permission refusée : {self.saveWaveAmplifiedFile} : {e}")
+            except Exception as e:
+                print(f"Un erreur est survenue : {e}")
     
 def init(api):
     global _

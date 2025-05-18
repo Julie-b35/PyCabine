@@ -188,6 +188,39 @@ class Utils:
             print(f"Vous n'avez pas la permission de supprimer '{fichier_a_supprimer}'.")
         except Exception as e:
             print(f"Une erreur s'est produite : {e}")
+
+    def call_process(self, command: str):
+        """
+        Méthode pour exécuter une commande système.
+        """
+        import subprocess
+        try:
+            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return result.stdout.decode('utf-8')
+        except subprocess.CalledProcessError as e:
+            print(f"Erreur lors de l'exécution de la commande : {e}")
+            return None
+        except Exception as e:
+            print(f"Une erreur s'est produite : {e}")
+            return None
+
+    def set_environment(self, name: str, value: str):
+        """
+        Méthode pour définir une variable d'environnement.
+        """
+        if value is None or value == "":
+            raise AttributeError(self.__api, "Utils.set_env", _("The value of the environment variable cannot be None or empty."))
+        
+        if not isinstance(name, str):
+            raise AttributeError(self.__api, "Utils.set_env", _("The name of the environment variable must be a string."))
+        if not isinstance(value, str):
+            raise AttributeError(self.__api, "Utils.set_env", _("The value of the environment variable must be a string."))
+        # Vérifie si la variable d'environnement existe déjà
+        if name in self.__os.environ:
+            # Si elle existes, on affiche un message d'avertissement
+            print(f"Avertissement : La variable d'environnement '{name}' existe déjà et sera remplacée.")
+        # Définit la variable d'environnement
+        self.__os.environ[name] = value
 """
 =====================================================================================================================
 ====                                                                                                             ====

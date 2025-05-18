@@ -71,6 +71,8 @@ class Scenario1() :
             # Le choix de publication à été fait, on peut poursuivre.
             if self.choice_publication == 1 :
                 print("La publication sur internet est choisie")
+                # TODO : Je lance l'enregistrement sur internet.
+                self.__api.getTools_Utils().call_process("/usr/bin/cabine_upload")
             elif self.choice_publication == 2 :
                 print("Mode secret activé.")
 

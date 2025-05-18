@@ -1,27 +1,29 @@
 import numpy as np
 import pygame
 import time
-from pad4pi import rpi_gpio
-import RPi.GPIO as GPIO
+#from pad4pi import rpi_gpio
+from Touches import Touches
+import sys
+import os
+from pathlib import Path
+
+# Ajoute le dossier ~/Pycabine/src au path
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
+
+import Api
+
+api = Api.Api()
+api.configure()
+
+#touches = GetCls_Touches()
+
+#import RPi.GPIO as GPIO
 
 # Initialisation de pygame.mixer
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
 
 # Fréquences DTMF (Hz)
-DTMF_FREQS = {
-    1: (697, 1209),
-    2: (697, 1336),
-    3: (697, 1477),
-    4: (770, 1209),
-    5: (770, 1336),
-    6: (770, 1477),
-    7: (852, 1209),
-    8: (852, 1336),
-    9: (852, 1477),
-    "*": (941, 1209),
-    0: (941, 1336),
-    "#": (941, 1477),
-}
+DTMF_FREQS = Touches.DTMF_FREQS
 
 # Générer un son pour une combinaison de fréquences
 def generate_dtmf(frequencies, duration=0.2, sample_rate=44100):
@@ -43,17 +45,20 @@ def play_dtmf(key):
             time.sleep(0.05)
 
 # Configuration du clavier matriciel
-KEYPAD = [
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9],
-    ["*", 0, "#"]
-]
+KEYPAD = Touches.KEYPAD
 
-ROW_PINS = [5, 6, 13, 19]  # Numérotation BCM
-COL_PINS = [16, 20, 21]    # Numérotation BCM
+ROW_PINS = Touches.ROW_PINS  # Numérotation BCM
+COL_PINS = Touches.COL_PINS    # Numérotation BCM
 
-factory = rpi_gpio.KeypadFactory()
+
+touches = Touches.Touches(api)
+touches.configure()
+touches.pre_run()
+
+
+print(touches)
+import sys
+sys.exit(1)
 keypad = factory.create_keypad(keypad=KEYPAD, row_pins=ROW_PINS, col_pins=COL_PINS)
 
 # Fonction appelée à chaque pression de touche

@@ -1,0 +1,272 @@
+#! /bin/bash
+
+: "Se script shell est le point d'entré pour lancer notre programme,
+    Il aura plusieurs fonctions, son but ultime est d'éviter de ce répéter
+
+    Le corps du fichier est séparé en plusieurs partie : 
+    - Les constantes
+    - Les fonctions
+    - Les fonctions traitant la ligne de commande
+    - Les fonctions d'initialisation du programme
+    - La partie main faisant appelles au fonctions.
+"
+
+#installation du fichier 'cabine' dans /usr/bin
+# sudo ln -sv /home/julie/PyCabine/cabine-julie/bin/cabine /usr/bin/
+
+: "
+=====================================================================================================================
+====                                                                                                             ====
+====                                            Constantes                                                       ====
+====                                                                                                             ====
+=====================================================================================================================
+    "
+
+    : "Si DEV est activé alors le programme sera lancé dans un environnement virtulisé 
+        Voir : https://docs.python.org/3/library/venv.html
+        à contrario si il est inactif alors
+    "
+    readonly DEV=1
+
+    #Chemin vers le lien symbolique
+    readonly PATH_LIEN_SYMBOLIQUE="/usr/bin/cabin"
+
+    #Argument passé en ligne de commande.
+    readonly ARGV=$@
+
+# Fin de la déclaration des constantes.
+: "
+=====================================================================================================================
+====                                                                                                             ====
+====                                Fonction Gestion des chemin.                                                 ====
+====                                                                                                             ====
+=====================================================================================================================
+    "
+    # Récupère le chemin du fichier
+    getPathFile() {
+        _getPath "$1" "file"
+    }
+
+    # Récupère le chemin du dossier
+    getPathDir() {
+        _getPath "$1" "dir"
+    }
+
+    : "
+        Fonction interne servant à parcourir les fichiers et dossiers jusqu'à obtenir le résultat
+
+        Affiche une erreur en cas d'echec
+    "
+    _getPath() {
+        name=$1
+        type_file=$2
+        #script_file=$0
+        script_file="$HOME/Projects/PyCabine/cabine-julie/bin/cabine"
+        dir_search=$(dirname $script_file)
+
+        while true; do
+            [[ "$dir_search" == "/" ]] && break
+
+            # Parcours le fichiers et dossier du répertoire actuel
+            # glob direct ("$dir_search"/* et "$dir_search"/.*). remplace ls
+            for item in "$dir_search"/* "$dir_search"/.*; do
+                # ignore les entrées spécial ".", ".."
+                [[ "$item" == ".." || "$item" == "." ]] && continue
+
+
+                # Vérifie le type de fichier
+                if [[ $type_file == "file"  && -f $item  && $(basename $item) == $name ]]; then
+                    echo $item
+                    return 0
+                elif [[ $type_file == "dir"  && -d $item  && $(basename $item) == $name ]]; then
+                    echo $item
+                    return 0
+                fi
+            done
+            
+            # Passe au répertoire parent
+            dir_search=$(dirname $dir_search)
+
+        done
+
+        echo "Aucune valeur trouvé"
+        return 1
+    }
+
+: "
+=====================================================================================================================
+====                                                                                                             ====
+====                                Fonction initialisaton.                                                      ====
+====                                                                                                             ====
+=====================================================================================================================
+    "
+
+    : "
+    Fonction utilisable uniquement en mode root
+    Elle permet de créer un lien symbolique
+    "
+    createLink() {
+        msg=""
+        msg="${msg}J'ai détecter que le lien symbolique \"${PATH_LIEN_SYMBOLIQUE}\" n'est pas installer.\n"
+        msg="${msg}Je recommande de le mettre en place, celui-ci pourra être supprimer avec la commande \"${0} clean\"\n"
+        msg="${msg}si vous souhaiter tous de même ne pas utiliser de raccourci, décommenter la ligne\n"
+
+        printf "$msg"
+    }
+
+    : "
+    La fonction init va préparer le système pour lancer notre programme.
+
+    Il aura pour fonction de :
+        de vérifier que le lien symbolique existe sinon, il le crée.
+    "
+    init() {
+        # Chargement du fichier d'environnement
+        file=$(getPathFile ".env") && source "$file" ||  { echo "Le fichier d'environnement '.env' est introuvable" ; exit 1; }
+        
+        # Contrôle si le lien symbolique n'existe pas 
+        # et vérifie si l'étape de création doit être lancé ou pas.
+        if [[ ! -L "$PATH_LIEN_SYMBOLIQUE" ]]; then
+            if [[ -n "$IGNORE_INSTALL_LINK" && "$IGNORE_INSTALL_LINK" == "1" ]]; then
+                echo "L'Installation du lien symbolique : \""$PATH_LIEN_SYMBOLIQUE\"" ignoré"
+            elif [[ -z "$IGNORE_INSTALL_LINK" ||  "$IGNORE_INSTALL_LINK" == "0" ]]; then
+                createLink
+            fi
+        fi
+
+        
+        # TODO En attente d'avoir terminer la fonction createLink
+        # [ ] Créer une classe Factory qui charge les classe à ne chaqué qu'une fois
+    }
+
+# Fin de la partie des fonction d'initialisation
+
+demo() {
+        # dirname = renvoie au dossier parent
+    # realpath = renvoie le chemin réel du script et remonte le lien simbolique
+    #Fix : résout le problème de lancement du script en dehors du dossier du projet.
+    WORKDIR=$(dirname $(dirname $(realpath $0)))/src/
+    export WORKDIR
+    LANGUAGE="fr:en"
+    export LANGUAGE
+   
+
+    VENV=$(dirname $(dirname ${WORKDIR}))/venv
+
+ 
+    PYTHON=/usr/bin/python
+    PYTHON=$VENV/bin/python
+    #$* Récupère l'ensemble des paramètres passé en ligne de commande.
+    # $1, $2... Récupère un paramètre à la fois
+    export LG_WD=/tmp
+
+    #LANG=fr_FR.UTF-8  
+    "$PYTHON" -u "${WORKDIR}" ${ARGV}
+
+}
+
+start() {
+         # dirname = renvoie au dossier parent
+    # realpath = renvoie le chemin réel du script et remonte le lien simbolique
+    #Fix : résout le problème de lancement du script en dehors du dossier du projet.
+    WORKDIR=$(dirname $(dirname $(realpath $0)))/src/
+    OldIFS=$IFS
+
+    VENV=$(dirname $(dirname ${WORKDIR}))/venv
+
+    PYTHON=/usr/bin/python
+    PYTHON=$VENV/bin/python
+    #$* Récupère l'ensemble des paramètres passé en ligne de commande.
+    # $1, $2... Récupère un paramètre à la fois
+
+    export LG_WD=/tmp
+
+    #LANG=fr_FR.UTF-8 
+    $PYTHON ${WORKDIR} start
+
+}
+
+stop() {
+            # dirname = renvoie au dossier parent
+    # realpath = renvoie le chemin réel du script et remonte le lien simbolique
+    #Fix : résout le problème de lancement du script en dehors du dossier du projet.
+    WORKDIR=$(dirname $(dirname $(realpath $0)))/src/
+    OldIFS=$IFS
+
+    VENV=$(dirname $(dirname ${WORKDIR}))/venv
+
+    PYTHON=/usr/bin/python
+    PYTHON=$VENV/bin/python
+    #$* Récupère l'ensemble des paramètres passé en ligne de commande.
+    # $1, $2... Récupère un paramètre à la fois
+    export LG_WD=/tmp
+
+    LANG=fr_FR.UTF-8 $PYTHON ${WORKDIR} stop
+
+}
+
+
+
+: "
+=====================================================================================================================
+====                                                                                                             ====
+====                                     Main (zone principal)                                                   ====
+====                                                                                                             ====
+=====================================================================================================================
+    "
+
+    # Appelle de la fonction ini
+    # TODO Pour la démo, j'ai mis la fonction init en commentaire
+    #init
+
+    : "
+    Création d'un switch afin d'analyser les arguments de la ligne de commande.
+
+
+    par défault 
+    "
+
+    case $1 in
+        help)
+            echo "Afficher message aide"
+            ;;
+        clean)
+            echo "Nettoyage du projet"
+            # TODO Mettre en place la fonction clean
+            ;;
+        purge)
+            echo "purge du projet"
+            # TODO Mettre en place la fonction purge
+            ;;
+        test)
+            echo "Test du projet"
+            # TODO Mettre en place la fonction test
+            ;;
+
+        start)
+            echo "Démarrage du service"
+            demo
+            ;;
+
+        stop)
+            echo "Arrêt du service"
+            stop
+            ;;
+        *)
+            echo "Mode démo actif :" 
+            demo
+            ;;
+    esac
+
+   #echo $0
+
+    exit
+# Fin du main (Zone principal)
+: "
+=====================================================================================================================
+====                                                                                                             ====
+====                                         suite obsolète                                                      ====
+====                                                                                                             ====
+=====================================================================================================================
+    "
+

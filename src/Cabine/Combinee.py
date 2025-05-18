@@ -20,7 +20,8 @@ class Combinee :
     def configure(self):
         self.__GPIO = self.__api.getTools_GPIO()
     def pre_run(self):
-        self.__GPIO.setup(GPIO_PIN_COMBINEE,self.__GPIO.IN)  # pin 17 réglée en input
+        #self.__GPIO.setup(GPIO_PIN_COMBINEE,self.__GPIO.IN)  # pin 17 réglée en input
+        self.__GPIO.setup(GPIO_PIN_COMBINEE,self.__GPIO.IN, pull_up_down=self.__GPIO.PUD_DOWN)  # pin 17 réglée en input
 
         self._setStateCombi()
     

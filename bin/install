@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Vérifie que le script est lancé avec sudo
+if [[ $EUID -ne 0 ]]; then
+    echo "Ce script doit être exécuté avec sudo : sudo ./install [install|remove|...]"
+    exit 1
+fi
+
+# Détermine l'utilisateur appelant (non-root)
+USER_NAME="$SUDO_USER"
+USER_HOME=$(eval echo "~$USER_NAME")
+
+# Fonctions root
+update_system() {
+    echo "[1] Mise à jour du système..."
+    apt update && apt upgrade -y
+}
+
+
+#sudo apt install libasound2-dev build-essential
+
+install_ffmpeg() {
+    echo "[2] Vérification de ffmpeg..."
+    if ! command -v ffmpeg &> /dev/null; then
+        echo "ffmpeg n'est pas installé. Installation..."
+        apt install ffmpeg -y
+    else
+        echo "ffmpeg est déjà installé."
+    fi
+}
+
+# Fonctions utilisateur
+install_cabine_user() {
+    echo "[INSTALLATION - utilisateur $USER_NAME]"
+
+    cd "$USER_HOME/PyCabine" || exit 1
+
+    if [ ! -L /usr/bin/cabine ]; then
+        sudo ln -s "$(pwd)/bin/cabine" /usr/bin/cabine
+        echo "Lien symbolique /usr/bin/cabine créé."
+    else
+        echo "Lien symbolique déjà présent."
+    fi
+
+    if [ ! -d .venv ]; then
+        echo "Création de l'environnement virtuel Python..."
+        python3 -m venv --system-site-packages .venv
+    fi
+
+    echo "Installation des dépendances Python..."
+    source .venv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    deactivate
+}
+
+remove_cabine() {
+    echo "[SUPPRESSION]"
+    rm -f /usr/bin/cabine
+    rm -rf "$USER_HOME/PyCabine/.venv"
+    echo "Suppression terminée."
+}
+
+update_cabine_user() {
+    echo "[MISE À JOUR - utilisateur $USER_NAME]"
+    cd "$USER_HOME/PyCabine" || exit 1
+    source .venv/bin/activate
+    pip install -r requirements.txt --upgrade
+    deactivate
+}
+
+reinstall_cabine() {
+    echo "[RÉINSTALLATION COMPLÈTE]"
+    remove_cabine
+    sudo -u "$USER_NAME" bash -c "$(declare -f install_cabine_user); install_cabine_user"
+}
+
+# Dispatcher
+case "$1" in
+    install)
+        update_system
+        install_ffmpeg
+        sudo -u "$USER_NAME" bash -c "$(declare -f install_cabine_user); install_cabine_user"
+        ;;
+    remove)
+        remove_cabine
+        ;;
+    update)
+        update_system
+        install_ffmpeg
+        sudo -u "$USER_NAME" bash -c "$(declare -f update_cabine_user); update_cabine_user"
+        ;;
+    reinstall)
+        reinstall_cabine
+        ;;
+    *)
+        echo "Utilisation : sudo ./install [install|remove|update|reinstall]"
+        exit 1
+        ;;
+esac
+
+exit 0

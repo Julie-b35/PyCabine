@@ -57,8 +57,8 @@ NAME_KEYPAD = {
 	'null' : KEYPAD[4][0], 'null' : KEYPAD[4][1], 'null' : KEYPAD[4][2], 'null' : KEYPAD[4][3], 'racc.' : KEYPAD[4][4],
 }
 
-ROW_PINS = [5, 	6, 	13,  4, 26]  # Numérotation BCM
-COL_PINS = [22, 21, 27, 23, 24]    # Numérotation BCM
+ROW_PINS = [5, 6, 13, 4, 26]  # Numérotation BCM
+COL_PINS = [22, 27, 23, 24]    # Numérotation BCM
 
 
 # Création d'une classe Touches qui renvoie le numéro de la touche appuyée et qui génère les fréquences associées (biiip)
@@ -79,19 +79,20 @@ class Touches :
 		print("Touches : Initialisation du clavier matriciel : pre_run")
 		# Initialisation du clavier matriciel
 		self.__pad.init_keypad(KEYPAD, ROW_PINS, COL_PINS)
-		self.__dtmf_sounds = {key: self.generate_dtmf(freqs) for key, freqs in DTMF_FREQS.items()}
+		#self.__dtmf_sounds = {key: self.generate_dtmf(freqs) for key, freqs in DTMF_FREQS.items()}
 	# Fonction appelée à chaque pression de touche
 	def handle_key_press(self,key):
 		print(f"Touche appuyée : {key}")
 		self.__son.stop()
 		self.select_key = key
 		self.pressed_button = True
+		#print(f"Touche Appuyé : {key}")
 		self.play_dtmf(key)  # Jouer la note associée à la touche
 
 	def handle_release_key(self, key):
 		print(f"Touche relaché : {key}")
 		self.pressed_button = False
-		self.stop_dtmf(key)
+		#self.stop_dtmf(key)
 
     # Générer un son pour une combinaison de fréquences
 	def generate_dtmf(self,frequencies, duration=1.0, sample_rate=44100):
@@ -149,3 +150,6 @@ def init(api):
     global _
     _ = api._
     return Touches(api)
+
+
+print("Touches.py : Module Touches chargé.")
